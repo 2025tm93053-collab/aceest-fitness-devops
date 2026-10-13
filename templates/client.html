@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}{{ client["name"] }}{% endblock %}
+{% block content %}
+{% macro err(key) %}{% if errors.get(key) %}<span class="field-error">{{ errors[key] }}</span>{% endif %}{% endmacro %}
+<div class="page-head">
+  <div>
+    <h1>{{ client["name"] }}</h1>
+    <p class="muted">{{ program["name"] if program else client["program"] }}{% if program %} - {{ program["desc"] }}{% endif %}</p>
+  </div>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('client_edit', client_id=client['id']) }}">Edit client</a>
+    <a class="btn btn-quiet" href="{{ url_for('workouts', client_id=client['id']) }}">Workouts</a>
+    <a class="btn btn-quiet" href="{{ url_for('client_report', client_id=client['id']) }}">PDF report</a>
+  </div>
+</div>
+
+<div class="grid">
+  <section class="panel">
+    <h2>Profile</h2>
+    <dl class="facts">
+      <dt>Age</dt><dd>{{ client["age"] if client["age"] is not none else "-" }}</dd>
+      <dt>Height</dt><dd>{{ ("%g cm"|format(client["height"])) if client["height"] is not none else "-" }}</dd>
+      <dt>Weight</dt><dd>{{ ("%g kg"|format(client["weight"])) if client["weight"] is not none else "-" }}</dd>
+      <dt>Calories</dt><dd>{{ (client["calories"] ~ " kcal/day") if client["calories"] is not none else "-" }}</dd>
+    </dl>
+  </section>
+  <section class="panel">
+    <h2>Membership</h2>
+    <p><span class="badge badge-{{ membership.state | lower }}">{{ membership.state }}</span></p>
+    <dl class="facts">
+      <dt>Ends</dt><dd>{{ membership.end or "-" }}</dd>
+      {% if membership.days_left is not none %}
+      <dt>{{ "Days left" if membership.days_left >= 0 else "Days overdue" }}</dt><dd>{{ membership.days_left | abs }}</dd>
+      {% endif %}
+    </dl>
+  </section>
+  <section class="panel">
+    <h2>Goals</h2>
+    <dl class="facts">
+      <dt>Target weight</dt><dd>{{ ("%g kg"|format(client["target_weight"])) if client["target_weight"] is not none else "-" }}</dd>
+      <dt>Target adherence</dt><dd>{{ (client["target_adherence"] ~ "%") if client["target_adherence"] is not none else "-" }}</dd>
+    </dl>
+  </section>
+  <section class="panel">
+    <h2>Progress</h2>
+    <dl class="facts">
+      <dt>Weeks logged</dt><dd>{{ weeks_logged }}</dd>
+      <dt>Average adherence</dt><dd>{{ avg_adherence }}%</dd>
+      <dt>Last metrics</dt>
+      <dd>{% if last_metric %}{{ last_metric["date"] }}: {{ ("%g kg"|format(last_metric["weight"])) if last_metric["weight"] is not none else "-" }}, waist {{ ("%g cm"|format(last_metric["waist"])) if last_metric["waist"] is not none else "-" }}, body fat {{ ("%g%%"|format(last_metric["bodyfat"])) if last_metric["bodyfat"] is not none else "-" }}{% else %}None logged{% endif %}</dd>
+    </dl>
+  </section>
+  <section class="panel">
+    <h2>BMI</h2>
+    {% if bmi %}
+      <p class="figure">{{ bmi.bmi }} <span class="muted">{{ bmi.category }}</span></p>
+      <p class="muted">{{ bmi.risk }}</p>
+    {% else %}
+      <p class="empty">Add height and weight in the client profile to see BMI.</p>
+    {% endif %}
+  </section>
+</div>
+
+<section class="panel">
+  <h2>Charts</h2>
+  <div class="charts">
+    <div>{% if adherence_chart %}{{ adherence_chart | safe }}{% else %}<p class="empty">Log weekly adherence to see the adherence chart.</p>{% endif %}</div>
+    <div>{% if weight_chart %}{{ weight_chart | safe }}{% else %}<p class="empty">Log body metrics with a weight to see the weight trend.</p>{% endif %}</div>
+  </div>
+</section>
+
+<div class="grid grid-2">
+  <section class="panel">
+    <h2>Log weekly adherence</h2>
+    <form method="post" action="{{ url_for('add_progress', client_id=client['id']) }}" class="stack" novalidate>
+      {{ csrf_field() }}
+      <label>Adherence (%)
+        <input type="number" name="adherence" min="0" max="100" value="{{ form.get('adherence', '') }}">
+        {{ err("adherence") }}
+      </label>
+      <button type="submit" class="btn">Save adherence</button>
+    </form>
+  </section>
+  <section class="panel">
+    <h2>Log body metrics</h2>
+    <form method="post" action="{{ url_for('add_metrics', client_id=client['id']) }}" class="stack" novalidate>
+      {{ csrf_field() }}
+      <label>Date (YYYY-MM-DD, blank for today)
+        <input type="text" name="date" value="{{ form.get('date', '') }}">{{ err("date") }}
+      </label>
+      <label>Weight (kg)
+        <input type="number" step="any" name="weight" value="{{ form.get('weight', '') }}">{{ err("weight") }}
+      </label>
+      <label>Waist (cm)
+        <input type="number" step="any" name="waist" value="{{ form.get('waist', '') }}">{{ err("waist") }}
+      </label>
+      <label>Body fat (%)
+        <input type="number" step="any" name="bodyfat" value="{{ form.get('bodyfat', '') }}">{{ err("bodyfat") }}
+      </label>
+      <button type="submit" class="btn">Save metrics</button>
+    </form>
+  </section>
+</div>
+
+<section class="panel">
+  <h2>Weekly program</h2>
+  <form method="post" action="{{ url_for('generate_program', client_id=client['id']) }}" class="inline-fields" novalidate>
+    {{ csrf_field() }}
+    <label>Experience level
+      <select name="experience">
+        {% for level in experience_levels %}
+          <option value="{{ level }}" {% if form.get("experience") == level %}selected{% endif %}>{{ level | capitalize }}</option>
+        {% endfor %}
+      </select>
+      {{ err("experience") }}
+    </label>
+    <button type="submit" class="btn">{{ "Regenerate program" if plan else "Generate program" }}</button>
+  </form>
+  {% if plan %}
+  <p class="muted">Generated for the {{ plan.experience }} level.</p>
+  <div class="table-wrap">
+  <table class="table">
+    <thead><tr><th scope="col">Day</th><th scope="col">Exercise</th><th scope="col">Sets</th><th scope="col">Reps</th></tr></thead>
+    <tbody>
+    {% for row in plan.rows %}
+      <tr><td>{{ row.day }}</td><td>{{ row.exercise }}</td><td>{{ row.sets }}</td><td>{{ row.reps }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="empty">No program generated yet. Pick an experience level to build a weekly plan for this client.</p>
+  {% endif %}
+</section>
+{% endblock %}

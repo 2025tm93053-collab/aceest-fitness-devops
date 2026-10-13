@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Clients{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Clients</h1>
+  <a class="btn" href="{{ url_for('client_new') }}">Add client</a>
+</div>
+{% if rows %}
+<div class="table-wrap">
+<table class="table">
+  <thead>
+    <tr><th scope="col">Name</th><th scope="col">Program</th><th scope="col">Calories</th>
+        <th scope="col">Membership</th><th scope="col">Ends</th></tr>
+  </thead>
+  <tbody>
+  {% for row in rows %}
+    <tr>
+      <th scope="row"><a href="{{ url_for('client_detail', client_id=row.client['id']) }}">{{ row.client["name"] }}</a></th>
+      <td>{{ row.program["name"] if row.program else row.client["program"] }}</td>
+      <td>{{ row.client["calories"] if row.client["calories"] is not none else "-" }}</td>
+      <td><span class="badge badge-{{ row.membership.state | lower }}">{{ row.membership.state }}</span></td>
+      <td>{{ row.membership.end or "-" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="empty">No clients yet. <a href="{{ url_for('client_new') }}">Add your first client</a> to start tracking programs, progress and membership.</p>
+{% endif %}
+{% endblock %}

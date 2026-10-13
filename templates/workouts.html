@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Workouts - {{ client["name"] }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Workouts for {{ client["name"] }}</h1>
+  <a class="btn btn-quiet" href="{{ url_for('client_detail', client_id=client['id']) }}">Back to client</a>
+</div>
+
+<section class="panel">
+  <h2>Log a workout</h2>
+  <form method="post" class="form-grid" novalidate>
+    {{ csrf_field() }}
+    <label>Date (YYYY-MM-DD)
+      <input type="text" name="date" value="{{ form.get('date', today) }}">
+      {% if errors.get("date") %}<span class="field-error">{{ errors["date"] }}</span>{% endif %}
+    </label>
+    <label>Workout type
+      <select name="workout_type">
+        <option value="">Choose a type</option>
+        {% for t in workout_types %}
+          <option value="{{ t }}" {% if form.get("workout_type") == t %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+      </select>
+      {% if errors.get("workout_type") %}<span class="field-error">{{ errors["workout_type"] }}</span>{% endif %}
+    </label>
+    <label>Duration (min)
+      <input type="number" name="duration_min" value="{{ form.get('duration_min', '60') }}">
+      {% if errors.get("duration_min") %}<span class="field-error">{{ errors["duration_min"] }}</span>{% endif %}
+    </label>
+    <label>Notes
+      <input type="text" name="notes" value="{{ form.get('notes', '') }}">
+      {% if errors.get("notes") %}<span class="field-error">{{ errors["notes"] }}</span>{% endif %}
+    </label>
+    <label>Exercise (optional)
+      <input type="text" name="exercise_name" value="{{ form.get('exercise_name', '') }}">
+      {% if errors.get("exercise_name") %}<span class="field-error">{{ errors["exercise_name"] }}</span>{% endif %}
+    </label>
+    <label>Sets
+      <input type="number" name="sets" value="{{ form.get('sets', '3') }}">
+      {% if errors.get("sets") %}<span class="field-error">{{ errors["sets"] }}</span>{% endif %}
+    </label>
+    <label>Reps
+      <input type="number" name="reps" value="{{ form.get('reps', '10') }}">
+      {% if errors.get("reps") %}<span class="field-error">{{ errors["reps"] }}</span>{% endif %}
+    </label>
+    <label>Exercise weight (kg)
+      <input type="number" step="any" name="exercise_weight" value="{{ form.get('exercise_weight', '0') }}">
+      {% if errors.get("exercise_weight") %}<span class="field-error">{{ errors["exercise_weight"] }}</span>{% endif %}
+    </label>
+    <div class="form-actions"><button type="submit" class="btn">Save workout</button></div>
+  </form>
+</section>
+
+<section class="panel">
+  <h2>History</h2>
+  {% if workouts %}
+  <div class="table-wrap">
+  <table class="table">
+    <thead><tr><th scope="col">Date</th><th scope="col">Type</th><th scope="col">Minutes</th>
+      <th scope="col">Exercises</th><th scope="col">Notes</th></tr></thead>
+    <tbody>
+    {% for w in workouts %}
+      <tr>
+        <td>{{ w.date }}</td><td>{{ w.workout_type }}</td><td>{{ w.duration_min }}</td>
+        <td>{% for e in w.exercises %}{{ e.name }} {{ e.sets }} x {{ e.reps }}{% if e.weight %} @ {{ "%g"|format(e.weight) }} kg{% endif %}{% if not loop.last %}<br>{% endif %}{% else %}-{% endfor %}</td>
+        <td>{{ w.notes or "-" }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="empty">No workouts logged yet. Use the form above to record the first session.</p>
+  {% endif %}
+</section>
+{% endblock %}

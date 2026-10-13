@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit client" if client else "Add client" }}{% endblock %}
+{% block content %}
+<h1>{{ "Edit " ~ client["name"] if client else "Add client" }}</h1>
+<form method="post" class="form-grid" novalidate>
+  {{ csrf_field() }}
+  {% macro field(key, label, type="text", hint="") %}
+    <label>{{ label }}
+      <input type="{{ type }}" name="{{ key }}" value="{{ form.get(key, '') }}"
+             {% if type == "number" %}step="any"{% endif %}
+             {% if errors.get(key) %}aria-invalid="true"{% endif %}>
+      {% if hint %}<small>{{ hint }}</small>{% endif %}
+      {% if errors.get(key) %}<span class="field-error">{{ errors[key] }}</span>{% endif %}
+    </label>
+  {% endmacro %}
+  {{ field("name", "Name") }}
+  {{ field("age", "Age", "number") }}
+  {{ field("height", "Height (cm)", "number") }}
+  {{ field("weight", "Weight (kg)", "number") }}
+  <label>Program
+    <select name="program" {% if errors.get("program") %}aria-invalid="true"{% endif %}>
+      <option value="">Choose a program</option>
+      {% for code, p in programs.items() %}
+        <option value="{{ code }}" {% if form.get("program") == code %}selected{% endif %}>{{ p.name }}</option>
+      {% endfor %}
+    </select>
+    {% if errors.get("program") %}<span class="field-error">{{ errors["program"] }}</span>{% endif %}
+  </label>
+  {{ field("target_weight", "Target weight (kg)", "number") }}
+  {{ field("target_adherence", "Target adherence (%)", "number") }}
+  <label>Membership status
+    <select name="membership_status">
+      {% for s in ("Active", "Inactive") %}
+        <option value="{{ s }}" {% if form.get("membership_status") == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+    {% if errors.get("membership_status") %}<span class="field-error">{{ errors["membership_status"] }}</span>{% endif %}
+  </label>
+  {{ field("membership_end", "Membership end date", "text", "YYYY-MM-DD") }}
+  <div class="form-actions">
+    <button type="submit" class="btn">Save client</button>
+    <a class="btn btn-quiet" href="{{ url_for('client_detail', client_id=client['id']) if client else url_for('dashboard') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}
